@@ -44,7 +44,7 @@ void client(int argc, char **argv) {
   int *numArray;
   unsigned int numOfElementsNet;
   unsigned int numOfElements;
-  float floatNumNet;
+  char *floatNumStr;
   float floatNum;
 
 
@@ -53,7 +53,7 @@ void client(int argc, char **argv) {
   unsigned int length;
   int *minMaxNet;
   int *minMax;
-  float *muledArrayNet;
+  char *muledArrayStr;
   float *muledArray;
   unsigned int i;
 
@@ -72,9 +72,6 @@ void client(int argc, char **argv) {
 
   // Program will terminate if user's input is number zero
   while (choice) {
-    for (i = 0; i < numOfElements; i++) {
-      printf("el%d\n", numArray[i]);
-    }
     fprintf(stdout, COLOR_YELLOW "Sending message to server...\n" COLOR_RESET);
 
     choiceNet = htonl(choice);
@@ -82,9 +79,14 @@ void client(int argc, char **argv) {
 
     switch(choice) {
       case 3: {
-        floatNumNet = htonl(floatNum);
+        floatNumStr = (char *)malloc(100 * sizeof(char));
+        sprintf(floatNumStr, "%f", floatNum);
+        length = strlen(floatNumStr) + 1;
 
-        send(client_discr, &floatNumNet, sizeof(float), 0);
+        send(client_discr, &length, sizeof(unsigned int), 0);
+        send(client_discr, floatNumStr, length, 0);
+
+        free(floatNumStr);
       }
       case 2:
       case 1: {
@@ -129,19 +131,19 @@ void client(int argc, char **argv) {
         break;
       }
       case 3: {
-        muledArrayNet = (float *)malloc(numOfElements * sizeof(float));
+        recv(client_discr, &length, sizeof(unsigned int), 0);
+        muledArrayStr = (char *)malloc(length * sizeof(char));
 
-        recv(client_discr, muledArrayNet, numOfElements * sizeof(float), 0);
+        recv(client_discr, muledArrayStr, length, 0);
 
-        muledArray = (float *)malloc(numOfElements * sizeof(float));
+        muledArray = strToFloatArray(muledArrayStr, numOfElements);
 
         for (i = 0; i < numOfElements; i++) {
-          muledArray[i] = ntohl(muledArrayNet[i]);
           fprintf(stdout, "Element %d: %f\n", i + 1, muledArray[i]);
         }
 
         free(muledArray);
-        free(muledArrayNet);
+        free(muledArrayStr);
       }
     }
 
@@ -209,7 +211,7 @@ int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, in
   fprintf(stdout, "Select operation:\n1:\n2:\n3:\n");
   scanf("%d", choice);
 
-  if (flag) {
+  if (flag && choice != 0) {
     fprintf(stdout, "Keep the same numbers?");
     scanf("%d", &newInputFlag);
   }

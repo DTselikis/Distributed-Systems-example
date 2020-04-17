@@ -115,7 +115,7 @@ void *clientThread(void *arg) {
 
   unsigned int numOfElementsNet;
   unsigned int numOfElements;
-  float multiplierNet;
+  char *multiplierStr;
   float multiplier;
   int *numArrayNet;
   int *numArray;
@@ -127,7 +127,7 @@ void *clientThread(void *arg) {
   float average;
   int *minMaxNet;
   int *minMax;
-  float *muledMatrixNet;
+  char *muledMatrixStr;
   float *muledMatrix;
   unsigned int i;
 
@@ -138,16 +138,20 @@ void *clientThread(void *arg) {
   fprintf(stdout, COLOR_YELLOW "Waiting for message from client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
 	recv(passedArgs->client_discr, &choiceNet, sizeof(unsigned int), 0);
   choice = ntohl(choiceNet);
-  printf("choice%d\n", choice);
+
   fprintf(stdout, COLOR_BLUE "Message from client [%d] recieved\n" COLOR_RESET, passedArgs->client_discr);
   // 0 indicates that client don't want to continue the communitcation
   while (choice) {
 	   // Receive data from client
   	switch(choice) {
   		case 3: {
-  			recv(passedArgs->client_discr, &multiplierNet, sizeof(float), 0);
+        recv(passedArgs->client_discr, &length, sizeof(unsigned int), 0);
+        multiplierStr = (char *)malloc(length * sizeof(char));
+  			recv(passedArgs->client_discr, multiplierStr, length, 0);
 
-        multiplier = ntohl(multiplierNet);
+        multiplier = atof(multiplierStr);
+
+        free(multiplierStr);
   		}
   		case 2:
   		case 1: {
@@ -162,7 +166,6 @@ void *clientThread(void *arg) {
 
         for (i = 0; i < numOfElements; i++) {
           numArray[i] = ntohl(numArrayNet[i]);
-          printf("%d\n", numArray[i]);
         }
 
         free(numArrayNet);
@@ -175,7 +178,6 @@ void *clientThread(void *arg) {
         averageStr = (char *)malloc(100 * sizeof(char*));
         sprintf(averageStr, "%f", average);
         length = strlen(averageStr) + 1;
-        printf("str%s\n", averageStr);
 
   			fprintf(stdout, COLOR_YELLOW "Sending message to client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
         send(passedArgs->client_discr, &length, sizeof(unsigned int), 0);
@@ -200,16 +202,14 @@ void *clientThread(void *arg) {
   		}
   		case 3: {
   			muledMatrix = mulMatrixWithFloat(numArray, numOfElements, multiplier);
-        muledMatrixNet = (float *)malloc(numOfElements * sizeof(float));
-        for (i = 0; i < numOfElements; i++) {
-          muledMatrixNet[i] = htonl(muledMatrix[i]);
-        }
+        muledMatrixStr = numArrayToCharArray(muledMatrix, numOfElements, ' ', &length, 0);
 
   			fprintf(stdout, COLOR_YELLOW "Sending message to client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
-        send(passedArgs->client_discr, muledMatrixNet, numOfElements * sizeof(float), 0);
+        send(passedArgs->client_discr, &length, sizeof(unsigned int), 0);
+        send(passedArgs->client_discr, muledMatrixStr, length, 0);
 
   			free(muledMatrix);
-  			free(muledMatrixNet);
+  			free(muledMatrixStr);
   		}
   	}
 
