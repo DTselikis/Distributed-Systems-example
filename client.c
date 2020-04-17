@@ -19,7 +19,7 @@
 int clientInitialize(char *host, unsigned int port);
 void client(int argc, char **argv);
 
-unsigned int menu(int **numArray, unsigned int *numOfElements, float *floatNum);
+int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum);
 char *numArrayToCharArray(void *array, unsigned int numOfElements, char delimeter, unsigned int *length, unsigned short int mode);
 char *compileStrArray(char **strArray, unsigned int length, unsigned int numOfElements, char delimeter);
 float *strToFloatArray(char *floatBuffer, unsigned int numOfElements);
@@ -61,7 +61,7 @@ void client(int argc, char **argv) {
   fprintf(stdout, COLOR_GREEN "Connection with server established!\n" COLOR_RESET);
 
   if (argc < 4) {
-    choice = menu(&numArray, &numOfElements, &floatNum);
+    numArray = menu(&choice, &numOfElements, &floatNum);
   }
   else {
     //numOfElements = readFromFile(&numArray, &length, &floatNum, initFile(argv[4]));
@@ -71,6 +71,9 @@ void client(int argc, char **argv) {
 
   // Program will terminate if user's input is number zero
   while (choice) {
+    for (i = 0; i < numOfElements; i++) {
+      printf("el%d\n", numArray[i]);
+    }
     fprintf(stdout, COLOR_YELLOW "Sending message to server...\n" COLOR_RESET);
 
     choiceNet = htonl(choice);
@@ -84,6 +87,7 @@ void client(int argc, char **argv) {
       }
       case 2:
       case 1: {
+        int res;
         numOfElementsNet = htonl(numOfElements);
         numArrayNet = (int *)malloc(numOfElements * sizeof(int));
         for (i = 0; i < numOfElements; i++) {
@@ -91,7 +95,7 @@ void client(int argc, char **argv) {
         }
 
         send(client_discr, &numOfElementsNet, sizeof(unsigned int), 0);
-        send(client_discr, numArrayNet, numOfElements * sizeof(int), 0);
+        res = send(client_discr, numArrayNet, numOfElements * sizeof(int), 0);
 
         free(numArray);
         free(numArrayNet);
@@ -146,7 +150,7 @@ void client(int argc, char **argv) {
     // that arrive don't include it
     //buffer[recievedMsgSize] = '\0';
 
-    choice = menu(&numArray, &numOfElements, &floatNum);
+    numArray = menu(&choice, &numOfElements, &floatNum);
   }
 
   fprintf(stdout, COLOR_YELLOW "Sending close to server...\n" COLOR_RESET);
@@ -194,14 +198,14 @@ int clientInitialize(char *host, unsigned int port) {
   return client_discr;
 }
 
-unsigned int menu(int **numArray, unsigned int *numOfElements, float *floatNum) {
-  unsigned int choice;
+int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum) {
+  int *numArray;
   unsigned int i;
   static unsigned char flag = 0;
   unsigned int newInputFlag;
 
-  fprintf(stdout, "Select operation:\n1.\n2.\n3\n.");
-  scanf("%d", &choice);
+  fprintf(stdout, "Select operation:\n1:\n2:\n3:\n");
+  scanf("%d", choice);
 
   if (flag) {
     fprintf(stdout, "Keep the same numbers?");
@@ -210,7 +214,7 @@ unsigned int menu(int **numArray, unsigned int *numOfElements, float *floatNum) 
 
   if (newInputFlag == 'y' || flag == 0) {
     flag = 1;
-    switch(choice) {
+    switch(*choice) {
       case 3: {
         fprintf(stdout, "\nEnter floating number: ");
         scanf("%f", floatNum);
@@ -220,17 +224,16 @@ unsigned int menu(int **numArray, unsigned int *numOfElements, float *floatNum) 
         fprintf(stdout, "\nEnter number of elements: ");
         scanf("%d", numOfElements);
 
-        *numArray = (int *)malloc(*numOfElements * sizeof(int));
-
+        numArray = (int *)malloc(*numOfElements * sizeof(int));
         for (i = 0; i < *numOfElements; i++) {
           fprintf(stdout, "\nEnter element %d: ", i + 1);
-          scanf("%d", numArray[i]);
+          scanf("%d", &numArray[i]);
         }
       }
     }
   }
 
-  return choice;
+  return numArray;
 }
 
 char *numArrayToCharArray(void *voidArray, unsigned int numOfElements, char delimeter, unsigned int *length, unsigned short int mode) {
