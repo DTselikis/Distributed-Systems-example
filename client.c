@@ -48,8 +48,9 @@ void client(int argc, char **argv) {
   float floatNum;
 
 
-  float averageNet;
+  char *averageStr;
   float average;
+  unsigned int length;
   int *minMaxNet;
   int *minMax;
   float *muledArrayNet;
@@ -104,8 +105,10 @@ void client(int argc, char **argv) {
 
     switch(choice) {
       case 1: {
-        recv(client_discr, &averageNet, sizeof(float), 0);
-        average = ntohl(average);
+        recv(client_discr, &length, sizeof(unsigned int), 0);
+        averageStr = (char *)malloc(length * sizeof(char));
+        recv(client_discr, averageStr, length, 0);
+        average = atof(averageStr);
 
         fprintf(stdout, "Average: %f", average);
 

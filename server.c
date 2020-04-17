@@ -119,10 +119,11 @@ void *clientThread(void *arg) {
   float multiplier;
   int *numArrayNet;
   int *numArray;
-  unsigned short choiceNet;
-  unsigned short choice;
+  unsigned int choiceNet;
+  unsigned int choice;
 
-  float averageNet;
+  char* averageStr;
+  unsigned int length;
   float average;
   int *minMaxNet;
   int *minMax;
@@ -135,8 +136,9 @@ void *clientThread(void *arg) {
   // If no messages are available at the socket, it blocks the execution
   // of the thread until a message is available (in non-blocking state)
   fprintf(stdout, COLOR_YELLOW "Waiting for message from client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
-	recv(passedArgs->client_discr, &choiceNet, sizeof(unsigned short), 0);
+	recv(passedArgs->client_discr, &choiceNet, sizeof(unsigned int), 0);
   choice = ntohl(choiceNet);
+  printf("choice%d\n", choice);
   fprintf(stdout, COLOR_BLUE "Message from client [%d] recieved\n" COLOR_RESET, passedArgs->client_discr);
   // 0 indicates that client don't want to continue the communitcation
   while (choice) {
@@ -149,16 +151,18 @@ void *clientThread(void *arg) {
   		}
   		case 2:
   		case 1: {
+        int res;
   			recv(passedArgs->client_discr, &numOfElementsNet, sizeof(unsigned int), 0);
         numOfElements = ntohl(numOfElementsNet);
 
   			numArrayNet = (int *)malloc(numOfElements * sizeof(int));
-  			recv(passedArgs->client_discr, numArrayNet, numOfElements * sizeof(int), 0);
+  			res = recv(passedArgs->client_discr, numArrayNet, numOfElements * sizeof(int), 0);
 
   			numArray = (int *)malloc(numOfElements * sizeof(int));
 
         for (i = 0; i < numOfElements; i++) {
           numArray[i] = ntohl(numArrayNet[i]);
+          printf("%d\n", numArray[i]);
         }
 
         free(numArrayNet);
@@ -168,11 +172,16 @@ void *clientThread(void *arg) {
   	switch(choice) {
   		case 1: {
   			average = findAverage(numArray, numOfElements);
-        averageNet = htonl(average);
+        averageStr = (char *)malloc(100 * sizeof(char*));
+        sprintf(averageStr, "%f", average);
+        length = strlen(averageStr) + 1;
+        printf("str%s\n", averageStr);
 
   			fprintf(stdout, COLOR_YELLOW "Sending message to client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
-        send(passedArgs->client_discr, &averageNet, sizeof(float), 0);
+        send(passedArgs->client_discr, &length, sizeof(unsigned int), 0);
+        send(passedArgs->client_discr, averageStr, length, 0);
 
+        free(averageStr);
         break;
   		}
   		case 2: {
@@ -208,7 +217,7 @@ void *clientThread(void *arg) {
 
     fprintf(stdout, COLOR_YELLOW "Waiting for message from client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
     // Waiting for another message
-    recv(passedArgs->client_discr, &choiceNet, sizeof(unsigned short), 0);
+    recv(passedArgs->client_discr, &choiceNet, sizeof(unsigned int), 0);
     choice = ntohl(choiceNet);
   }
 
