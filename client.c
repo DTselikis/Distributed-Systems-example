@@ -19,15 +19,20 @@
 int clientInitialize(char *host, unsigned int port);
 void client(int argc, char **argv);
 
-int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, int *previousArray);
+int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, int *previousArray, unsigned short *flag, unsigned short *floatFlag);
 char *numArrayToCharArray(void *array, unsigned int numOfElements, char delimeter, unsigned int *length, unsigned short int mode);
 char *compileStrArray(char **strArray, unsigned int length, unsigned int numOfElements, char delimeter);
 float *strToFloatArray(char *floatBuffer, unsigned int numOfElements);
 
 FILE *initFile(char *fName);
-unsigned int readFromFile(char **numArray, unsigned int *length, float *floatNum, FILE *fPointer);
+int *readFromFile(unsigned int *numOfElements, float *floatNum, FILE *fPointer);
 
 int main (int argc, char *argv[]) {
+
+  if (argc < 3) {
+    fprintf(stderr, "Usage: ./client host port <file>\n");
+    exit(1);
+  }
 
   client(argc, argv);
 
@@ -57,17 +62,21 @@ void client(int argc, char **argv) {
   float *muledArray;
   unsigned int i;
 
+  unsigned short flag = 0;
+  unsigned short floatFlag = 0;
+
   client_discr = clientInitialize(argv[1], atoi(argv[2]));
 
   fprintf(stdout, COLOR_GREEN "Connection with server established!\n" COLOR_RESET);
 
   if (argc < 4) {
-    numArray = menu(&choice, &numOfElements, &floatNum, NULL);
+    numArray = menu(&choice, &numOfElements, &floatNum, NULL, &flag, &floatFlag);
   }
   else {
-    //numOfElements = readFromFile(&numArray, &length, &floatNum, initFile(argv[4]));
-    fprintf(stdout, "Option:1\n2\n3\n");
-    scanf("%d", &choice);
+    numArray = readFromFile(&numOfElements, &floatNum, initFile(argv[3]));
+    flag = 1;
+    floatFlag = 1;
+    numArray = menu(&choice, &numOfElements, &floatNum, numArray, &flag, &floatFlag);
   }
 
   // Program will terminate if user's input is number zero
@@ -154,7 +163,7 @@ void client(int argc, char **argv) {
     // that arrive don't include it
     //buffer[recievedMsgSize] = '\0';
 
-    numArray = menu(&choice, &numOfElements, &floatNum, numArray);
+    numArray = menu(&choice, &numOfElements, &floatNum, numArray, &flag, &floatFlag);
   }
 
   fprintf(stdout, COLOR_YELLOW "Sending close to server...\n" COLOR_RESET);
@@ -202,11 +211,9 @@ int clientInitialize(char *host, unsigned int port) {
   return client_discr;
 }
 
-int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, int *previousArray) {
+int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, int *previousArray, unsigned short *flag, unsigned short *floatFlag) {
   int *numArray = previousArray;
   unsigned int i;
-  static unsigned short flag = 0;
-  static unsigned short floatFlag = 0;
   unsigned int newInputFlag;
 
   fprintf(stdout, "Select operation:\n1: Find average\n"
@@ -215,8 +222,8 @@ int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, in
   "0: Exit\nChoice: ");
   scanf("%d", choice);
 
-  if (flag && *choice != 0) {
-    if (*choice == 3 && floatFlag == 0) {
+  if (*flag && *choice != 0) {
+    if (*choice == 3 && *floatFlag == 0) {
       newInputFlag = 0;
     }
     else {
@@ -228,14 +235,14 @@ int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, in
     newInputFlag = 1;
   }
 
-  if (newInputFlag == 0 || flag == 0) {
+  if (newInputFlag == 0 || *flag == 0) {
     if (previousArray != NULL) free(numArray);
-    flag = 1;
+    *flag = 1;
     switch(*choice) {
       case 3: {
         fprintf(stdout, "\nEnter floating number: ");
         scanf("%f", floatNum);
-        floatFlag = 1;
+        *floatFlag = 1;
       }
       case 2:
       case 1: {
@@ -344,24 +351,21 @@ FILE *initFile(char *fName) {
 
 // File input
 // Returns number of elements read and an 1-D array of these elements
-unsigned int readFromFile(char **numArray, unsigned int *length, float *floatNum, FILE *fPointer) {
-	unsigned int numOfElements;
+int *readFromFile(unsigned int *numOfElements, float *floatNum, FILE *fPointer) {
 	unsigned int i;
-  int *array;
+  int *numArray;
 
   fscanf(fPointer, "%f", floatNum);
-	fscanf(fPointer, "%d", &numOfElements);
+	fscanf(fPointer, "%d", numOfElements);
 
-  array = (int *)malloc(numOfElements * sizeof(int));
-  for (i = 0; i < numOfElements; i++) {
+  numArray = (int *)malloc(*numOfElements * sizeof(int));
+  for (i = 0; i < *numOfElements; i++) {
     fprintf(stdout, "\nEnter element: %d", i + 1);
-    fscanf(fPointer, "%d", &array[i]);
+    fscanf(fPointer, "%d", &numArray[i]);
   }
 
-  *numArray = numArrayToCharArray((void *) array, numOfElements, ' ', length, 1);
-
+  fprintf(stdout, "\n");
 	fclose(fPointer);
-  free(array);
 
-	return numOfElements;
+	return numArray;
 }
