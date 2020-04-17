@@ -112,94 +112,104 @@ void server(unsigned int port) {
 void *clientThread(void *arg) {
   // Typecasting the void argument to something we can handle
   struct threadArgs *passedArgs = (struct threadArgs *) arg;
+
+  unsigned int numOfElementsNet;
   unsigned int numOfElements;
+  float multiplierNet;
   float multiplier;
+  int *numArrayNet;
   int *numArray;
-  char buffer[100];
-  char *intBuffer;
+  unsigned short choiceNet;
   unsigned short choice;
 
+  float averageNet;
   float average;
+  int *minMaxNet;
   int *minMax;
+  float *muledMatrixNet;
   float *muledMatrix;
-  char *numStr;
-  unsigned int length;
+  unsigned int i;
 
 
   // Receive messages from a socket.
   // If no messages are available at the socket, it blocks the execution
   // of the thread until a message is available (in non-blocking state)
   fprintf(stdout, COLOR_YELLOW "Waiting for message from client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
-	recv(passedArgs->client_discr, &choice, sizeof(unsigned short), 0);
+	recv(passedArgs->client_discr, &choiceNet, sizeof(unsigned short), 0);
+  choice = ntohl(choiceNet);
   fprintf(stdout, COLOR_BLUE "Message from client [%d] recieved\n" COLOR_RESET, passedArgs->client_discr);
   // 0 indicates that client don't want to continue the communitcation
   while (choice) {
 	   // Receive data from client
   	switch(choice) {
   		case 3: {
-  			recv(passedArgs->client_discr, &multiplier, sizeof(float), 0);
+  			recv(passedArgs->client_discr, &multiplierNet, sizeof(float), 0);
+
+        multiplier = ntohl(multiplierNet);
   		}
   		case 2:
   		case 1: {
-        int num;
-        int len;
-  			recv(passedArgs->client_discr, &numOfElements, sizeof(numOfElements), 0);
-        num = ntohl(numOfElements);
-        recv(passedArgs->client_discr, &length, sizeof(length), 0);
-  			intBuffer = (char *)malloc(length * sizeof(char));
-        printf("num: %d len: %d\n", num, len);
-        printf("number: %d length %d\n", numOfElements, length);
-  			recv(passedArgs->client_discr, intBuffer, length, 0);
+  			recv(passedArgs->client_discr, &numOfElementsNet, sizeof(unsigned int), 0);
+        numOfElements = ntohl(numOfElementsNet);
 
-        printf("!!%s\n", intBuffer);
+  			numArrayNet = (int *)malloc(numOfElements * sizeof(int));
+  			recv(passedArgs->client_discr, numArrayNet, numOfElements * sizeof(int), 0);
 
-  			numArray = strToIntArray(intBuffer, numOfElements);
+  			numArray = (int *)malloc(numOfElements * sizeof(int));
+
+        for (i = 0; i < numOfElements; i++) {
+          numArray[i] = ntohl(numArrayNet[i]);
+        }
+
+        free(numArrayNet);
   		}
   	}
 
   	switch(choice) {
   		case 1: {
   			average = findAverage(numArray, numOfElements);
+        averageNet = htonl(average);
 
   			fprintf(stdout, COLOR_YELLOW "Sending message to client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
-  			send(passedArgs->client_discr, &average, sizeof(float), 0);
-
-  			free(intBuffer);
+        send(passedArgs->client_discr, &averageNet, sizeof(float), 0);
 
         break;
   		}
   		case 2: {
   			minMax = findMinMax(numArray, numOfElements);
-  			numStr = numArrayToCharArray((void *) minMax, 2, ' ', &length, 0);
+        minMaxNet = (int *)malloc(2 * sizeof(int));
+        minMaxNet[0] = htonl(minMax[0]);
+        minMaxNet[1] = htonl(minMax[1]);
 
   			fprintf(stdout, COLOR_YELLOW "Sending message to client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
-        send(passedArgs->client_discr, &length, sizeof(unsigned int), 0);
-        send(passedArgs->client_discr, numStr, length, 0);
+        send(passedArgs->client_discr, minMaxNet, 2 * sizeof(int), 0);
 
   			free(minMax);
-  			free(numStr);
+  			free(minMaxNet);
 
         break;
   		}
   		case 3: {
   			muledMatrix = mulMatrixWithFloat(numArray, numOfElements, multiplier);
-  			numStr = numArrayToCharArray((void *) muledMatrix, numOfElements, ' ', &length, 0);
+        muledMatrixNet = (float *)malloc(numOfElements * sizeof(float));
+        for (i = 0; i < numOfElements; i++) {
+          muledMatrixNet[i] = htonl(muledMatrix[i]);
+        }
 
   			fprintf(stdout, COLOR_YELLOW "Sending message to client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
-        send(passedArgs->client_discr, &length, sizeof(unsigned int), 0);
-        send(passedArgs->client_discr, numStr, length, 0);
+        send(passedArgs->client_discr, muledMatrixNet, numOfElements * sizeof(float), 0);
 
   			free(muledMatrix);
-  			free(numStr);
+  			free(muledMatrixNet);
   		}
   	}
 
-  	free(intBuffer);
   	free(numArray);
 
     fprintf(stdout, COLOR_YELLOW "Waiting for message from client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
     // Waiting for another message
-    recv(passedArgs->client_discr, &choice, sizeof(unsigned short), 0);
+    recv(passedArgs->client_discr, &choiceNet, sizeof(unsigned short), 0);
+    choice = ntohl(choiceNet);
   }
 
   *passedArgs->finished = 0; // Set this thread's slot as free
