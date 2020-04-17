@@ -111,7 +111,7 @@ void client(int argc, char **argv) {
         recv(client_discr, averageStr, length, 0);
         average = atof(averageStr);
 
-        fprintf(stdout, "Average: %f", average);
+        fprintf(stdout, "Average: %5.2f\n", average);
 
         break;
       }
@@ -205,18 +205,27 @@ int clientInitialize(char *host, unsigned int port) {
 int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, int *previousArray) {
   int *numArray = previousArray;
   unsigned int i;
-  static unsigned char flag = 0;
+  static unsigned short flag = 0;
+  static unsigned short floatFlag = 0;
   unsigned int newInputFlag;
 
   fprintf(stdout, "Select operation:\n1: Find average\n"
   "2: Find minimum and maximum number\n"
   "3: Matrix multiplication\n"
-  "0: Exit");
+  "0: Exit\nChoice: ");
   scanf("%d", choice);
 
-  if (flag && choice != 0) {
-    fprintf(stdout, "Keep the same numbers?");
-    scanf("%d", &newInputFlag);
+  if (flag && *choice != 0) {
+    if (*choice == 3 && floatFlag == 0) {
+      newInputFlag = 0;
+    }
+    else {
+      fprintf(stdout, "Keep the same numbers? (1 = yes 0 = no)\nChoice: ");
+      scanf("%d", &newInputFlag);
+    }
+  }
+  else if (*choice == 0) {
+    newInputFlag = 1;
   }
 
   if (newInputFlag == 0 || flag == 0) {
@@ -226,6 +235,7 @@ int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, in
       case 3: {
         fprintf(stdout, "\nEnter floating number: ");
         scanf("%f", floatNum);
+        floatFlag = 1;
       }
       case 2:
       case 1: {
