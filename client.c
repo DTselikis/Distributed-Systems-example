@@ -123,7 +123,7 @@ void client(int argc, char **argv) {
         minMax[0] = ntohl(minMaxNet[0]);
         minMax[1] = ntohl(minMaxNet[1]);
 
-        fprintf(stdout, "Min: %d, Max: %d", minMax[0], minMax[1]);
+        fprintf(stdout, "Min: %d, Max: %d\n", minMax[0], minMax[1]);
 
         free(minMax);
         free(minMaxNet);
@@ -208,7 +208,10 @@ int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, in
   static unsigned char flag = 0;
   unsigned int newInputFlag;
 
-  fprintf(stdout, "Select operation:\n1:\n2:\n3:\n");
+  fprintf(stdout, "Select operation:\n1: Find average\n"
+  "2: Find minimum and maximum number\n"
+  "3: Matrix multiplication\n"
+  "0: Exit");
   scanf("%d", choice);
 
   if (flag && choice != 0) {
