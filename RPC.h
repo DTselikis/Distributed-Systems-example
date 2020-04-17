@@ -46,10 +46,10 @@ typedef struct mulFloat mulFloat;
 #define findAverage 1
 extern  float * findaverage_1(intMatrix *, CLIENT *);
 extern  float * findaverage_1_svc(intMatrix *, struct svc_req *);
-#define findMinMax 1
+#define findMinMax 2
 extern  intMatrix * findminmax_1(intMatrix *, CLIENT *);
 extern  intMatrix * findminmax_1_svc(intMatrix *, struct svc_req *);
-#define mulMatrixWithFloat 1
+#define mulMatrixWithFloat 3
 extern  floatMatrix * mulmatrixwithfloat_1(mulFloat *, CLIENT *);
 extern  floatMatrix * mulmatrixwithfloat_1_svc(mulFloat *, struct svc_req *);
 extern int rpc_prog_1_freeresult (SVCXPRT *, xdrproc_t, caddr_t);
@@ -58,10 +58,10 @@ extern int rpc_prog_1_freeresult (SVCXPRT *, xdrproc_t, caddr_t);
 #define findAverage 1
 extern  float * findaverage_1();
 extern  float * findaverage_1_svc();
-#define findMinMax 1
+#define findMinMax 2
 extern  intMatrix * findminmax_1();
 extern  intMatrix * findminmax_1_svc();
-#define mulMatrixWithFloat 1
+#define mulMatrixWithFloat 3
 extern  floatMatrix * mulmatrixwithfloat_1();
 extern  floatMatrix * mulmatrixwithfloat_1_svc();
 extern int rpc_prog_1_freeresult ();

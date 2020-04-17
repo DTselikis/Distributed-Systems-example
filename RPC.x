@@ -14,7 +14,7 @@ struct mulFloat {
 program RPC_PROG {
   version RPC_VERS {
     float findAverage(intMatrix) = 1;
-    intMatrix findMinMax(intMatrix) = 1;
-    floatMatrix mulMatrixWithFloat(mulFloat) = 1;
+    intMatrix findMinMax(intMatrix) = 2;
+    floatMatrix mulMatrixWithFloat(mulFloat) = 3;
   } = 1;
 } = 0x23451111;
