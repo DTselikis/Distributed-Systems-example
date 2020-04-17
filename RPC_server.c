@@ -11,9 +11,15 @@ findaverage_1_svc(intMatrix *argp, struct svc_req *rqstp)
 {
 	static float  result;
 
-	/*
-	 * insert server code here
-	 */
+	unsigned int sum = 0;
+	unsigned int i;
+
+	for (i = 0; i < argp->numArray.numArray_len; sum += argp->numArray.numArray_val[i++])
+  ;
+
+  // Considering the chance of dividing by 0
+  // Typecast to float to get float number
+  result = (argp->numArray.numArray_len > 0) ? sum / (float) argp->numArray.numArray_len : 0;
 
 	return &result;
 }
@@ -23,9 +29,26 @@ findminmax_1_svc(intMatrix *argp, struct svc_req *rqstp)
 {
 	static intMatrix  result;
 
-	/*
-	 * insert server code here
-	 */
+	unsigned int i;
+	int min;
+	int max;
+
+	min = argp->numArray.numArray_val[0];
+	max = argp->numArray.numArray_val[0];
+	for (i = 1; i < argp->numArray.numArray_len; i++) {
+		if (min > argp->numArray.numArray_val[i]) {
+			min = argp->numArray.numArray_val[i];
+		}
+		if (max < argp->numArray.numArray_val[i]) {
+			max = argp->numArray.numArray_val[i];
+		}
+	}
+
+	result.numArray.numArray_len = argp->numArray.numArray_len;
+	result.numArray.numArray_val = (int *)malloc(result.numArray.numArray_len * sizeof(int));
+
+	result.numArray.numArray_val[0] = min;
+	result.numArray.numArray_val[1] = max;
 
 	return &result;
 }
@@ -35,9 +58,14 @@ mulmatrixwithfloat_1_svc(mulFloat *argp, struct svc_req *rqstp)
 {
 	static floatMatrix  result;
 
-	/*
-	 * insert server code here
-	 */
+	unsigned int i;
+
+	result.muledArray.muledArray_len = argp->numArray.numArray_len;
+	result.muledArray.muledArray_val = (float *)malloc(result.muledArray.muledArray_len * sizeof(float));
+
+	for (i = 0; i < argp->numArray.numArray_len; i++) {
+		result.muledArray.muledArray_val[i] = argp->numArray.numArray_val[i] * argp->multiplier;
+	}
 
 	return &result;
 }
