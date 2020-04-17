@@ -93,6 +93,7 @@ void client(int argc, char **argv) {
         send(client_discr, &numOfElementsNet, sizeof(unsigned int), 0);
         send(client_discr, numArrayNet, numOfElements * sizeof(int), 0);
 
+        free(numArray);
         free(numArrayNet);
       }
     }
