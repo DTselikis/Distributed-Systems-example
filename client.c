@@ -19,7 +19,7 @@
 int clientInitialize(char *host, unsigned int port);
 void client(int argc, char **argv);
 
-int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum);
+int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, int *previousArray);
 char *numArrayToCharArray(void *array, unsigned int numOfElements, char delimeter, unsigned int *length, unsigned short int mode);
 char *compileStrArray(char **strArray, unsigned int length, unsigned int numOfElements, char delimeter);
 float *strToFloatArray(char *floatBuffer, unsigned int numOfElements);
@@ -62,7 +62,7 @@ void client(int argc, char **argv) {
   fprintf(stdout, COLOR_GREEN "Connection with server established!\n" COLOR_RESET);
 
   if (argc < 4) {
-    numArray = menu(&choice, &numOfElements, &floatNum);
+    numArray = menu(&choice, &numOfElements, &floatNum, NULL);
   }
   else {
     //numOfElements = readFromFile(&numArray, &length, &floatNum, initFile(argv[4]));
@@ -98,7 +98,6 @@ void client(int argc, char **argv) {
         send(client_discr, &numOfElementsNet, sizeof(unsigned int), 0);
         res = send(client_discr, numArrayNet, numOfElements * sizeof(int), 0);
 
-        free(numArray);
         free(numArrayNet);
       }
     }
@@ -153,7 +152,7 @@ void client(int argc, char **argv) {
     // that arrive don't include it
     //buffer[recievedMsgSize] = '\0';
 
-    numArray = menu(&choice, &numOfElements, &floatNum);
+    numArray = menu(&choice, &numOfElements, &floatNum, numArray);
   }
 
   fprintf(stdout, COLOR_YELLOW "Sending close to server...\n" COLOR_RESET);
@@ -201,8 +200,8 @@ int clientInitialize(char *host, unsigned int port) {
   return client_discr;
 }
 
-int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum) {
-  int *numArray;
+int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, int *previousArray) {
+  int *numArray = previousArray;
   unsigned int i;
   static unsigned char flag = 0;
   unsigned int newInputFlag;
@@ -215,7 +214,8 @@ int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum) {
     scanf("%d", &newInputFlag);
   }
 
-  if (newInputFlag == 'y' || flag == 0) {
+  if (newInputFlag == 0 || flag == 0) {
+    if (previousArray != NULL) free(numArray);
     flag = 1;
     switch(*choice) {
       case 3: {
