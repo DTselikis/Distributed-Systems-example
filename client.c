@@ -19,7 +19,7 @@
 int clientInitialize(char *host, unsigned int port);
 void client(int argc, char **argv);
 
-unsigned int menu(char **numArray, unsigned int *numOfElements, unsigned int *length, float *floatNum);
+unsigned int menu(int **numArray, unsigned int *numOfElements, float *floatNum);
 char *numArrayToCharArray(void *array, unsigned int numOfElements, char delimeter, unsigned int *length, unsigned short int mode);
 char *compileStrArray(char **strArray, unsigned int length, unsigned int numOfElements, char delimeter);
 float *strToFloatArray(char *floatBuffer, unsigned int numOfElements);
@@ -37,15 +37,22 @@ int main (int argc, char *argv[]) {
 void client(int argc, char **argv) {
   int client_discr; // Client's socket
   char *buffer;
+  unsigned int choiceNet;
   unsigned int choice;
 
-  char *numArray;
+  int *numArrayNet;
+  int *numArray;
+  unsigned int numOfElementsNet;
   unsigned int numOfElements;
-  unsigned int length;
+  float floatNumNet;
   float floatNum;
 
+
+  float averageNet;
   float average;
+  float *minMaxNet;
   float *minMax;
+  float *muledArrayNet;
   float *muledArray;
   unsigned int i;
 
@@ -54,10 +61,10 @@ void client(int argc, char **argv) {
   fprintf(stdout, COLOR_GREEN "Connection with server established!\n" COLOR_RESET);
 
   if (argc < 4) {
-    choice = menu(&numArray, &numOfElements, &length, &floatNum);
+    choice = menu(&numArray, &numOfElements, &floatNum);
   }
   else {
-    numOfElements = readFromFile(&numArray, &length, &floatNum, initFile(argv[4]));
+    //numOfElements = readFromFile(&numArray, &length, &floatNum, initFile(argv[4]));
     fprintf(stdout, "Option:1\n2\n3\n");
     scanf("%d", &choice);
   }
@@ -66,60 +73,68 @@ void client(int argc, char **argv) {
   while (choice) {
     fprintf(stdout, COLOR_YELLOW "Sending message to server...\n" COLOR_RESET);
 
-    send(client_discr, &choice, sizeof(unsigned int), 0);
+    choiceNet = htonl(choice);
+    send(client_discr, &choiceNet, sizeof(unsigned int), 0);
 
     switch(choice) {
       case 3: {
-        send(client_discr, &floatNum, sizeof(float), 0);
+        floatNumNet = htonl(floatNum);
+
+        send(client_discr, &floatNumNet, sizeof(float), 0);
       }
       case 2:
       case 1: {
-        int num = htonl(numOfElements);
-        int len = htonl(length);
-        send(client_discr, &num, sizeof(num), 0);
-        send(client_discr, &len, sizeof(len), 0);
-        send(client_discr, numArray, length, 0);
+        numOfElementsNet = htonl(numOfElements);
+        numArrayNet = (int *)malloc(numOfElements * sizeof(int));
+        for (i = 0; i < numOfElements; i++) {
+          numArrayNet[i] = htonl(numArray[i]);
+        }
+
+        send(client_discr, &numOfElementsNet, sizeof(unsigned int), 0);
+        send(client_discr, numArrayNet, numOfElements * sizeof(int), 0);
+
+        free(numArrayNet);
       }
     }
 
     switch(choice) {
       case 1: {
-        recv(client_discr, &average, sizeof(float), 0);
+        recv(client_discr, &averageNet, sizeof(float), 0);
+        average = ntohl(average);
 
         fprintf(stdout, "Average: %f", average);
 
         break;
       }
       case 2: {
-        recv(client_discr, &length, sizeof(unsigned int), 0);
+        minMaxNet = (float *)malloc(2 * sizeof(float));
+        recv(client_discr, minMaxNet, 2 * sizeof(float), 0);
 
-        buffer = (char *)malloc(length * sizeof(char));
+        minMax = (float *)malloc(2 * sizeof(float));
+        minMax[0] = ntohl(minMaxNet[0]);
+        minMax[1] = ntohl(minMaxNet[1]);
 
-        recv(client_discr, buffer, length, 0);
-
-        minMax = strToFloatArray(buffer, 2);
-
-        // TODO fix type
         fprintf(stdout, "Min: %f, Max: %f", minMax[0], minMax[1]);
 
-        free(buffer);
+        free(minMax);
+        free(minMaxNet);
 
         break;
       }
       case 3: {
-        recv(client_discr, &length, sizeof(unsigned int), 0);
+        muledArrayNet = (float *)malloc(numOfElements * sizeof(float));
 
-        buffer = (char *)malloc(length * sizeof(char));
+        recv(client_discr, muledArrayNet, numOfElements * sizeof(float), 0);
 
-        recv(client_discr, buffer, length, 0);
-
-        muledArray = strToFloatArray(buffer, numOfElements);
+        muledArray = (float *)malloc(numOfElements * sizeof(float));
 
         for (i = 0; i < numOfElements; i++) {
+          muledArray[i] = ntohl(muledArrayNet[i]);
           fprintf(stdout, "Element %d: %f\n", i + 1, muledArray[i]);
         }
-        free(buffer);
+
         free(muledArray);
+        free(muledArrayNet);
       }
     }
 
@@ -130,7 +145,7 @@ void client(int argc, char **argv) {
     // that arrive don't include it
     //buffer[recievedMsgSize] = '\0';
 
-    choice = menu(&numArray, &numOfElements, &length, &floatNum);
+    choice = menu(&numArray, &numOfElements, &floatNum);
   }
 
   fprintf(stdout, COLOR_YELLOW "Sending close to server...\n" COLOR_RESET);
@@ -178,10 +193,9 @@ int clientInitialize(char *host, unsigned int port) {
   return client_discr;
 }
 
-unsigned int menu(char **numArray, unsigned int *numOfElements, unsigned int *length, float *floatNum) {
+unsigned int menu(int **numArray, unsigned int *numOfElements, float *floatNum) {
   unsigned int choice;
   unsigned int i;
-  int *array;
   static unsigned char flag = 0;
   unsigned int newInputFlag;
 
@@ -205,19 +219,15 @@ unsigned int menu(char **numArray, unsigned int *numOfElements, unsigned int *le
         fprintf(stdout, "\nEnter number of elements: ");
         scanf("%d", numOfElements);
 
-        array = (int *)malloc(*numOfElements * sizeof(int));
+        *numArray = (int *)malloc(*numOfElements * sizeof(int));
 
         for (i = 0; i < *numOfElements; i++) {
           fprintf(stdout, "\nEnter element %d: ", i + 1);
-          scanf("%d", &array[i]);
+          scanf("%d", numArray[i]);
         }
-
-        *numArray = numArrayToCharArray((void *) array, *numOfElements, ' ', length, 1);
       }
     }
   }
-
-  free(array);
 
   return choice;
 }
