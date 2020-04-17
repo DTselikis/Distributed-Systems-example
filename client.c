@@ -50,8 +50,8 @@ void client(int argc, char **argv) {
 
   float averageNet;
   float average;
-  float *minMaxNet;
-  float *minMax;
+  int *minMaxNet;
+  int *minMax;
   float *muledArrayNet;
   float *muledArray;
   unsigned int i;
@@ -107,14 +107,14 @@ void client(int argc, char **argv) {
         break;
       }
       case 2: {
-        minMaxNet = (float *)malloc(2 * sizeof(float));
-        recv(client_discr, minMaxNet, 2 * sizeof(float), 0);
+        minMaxNet = (int *)malloc(2 * sizeof(int));
+        recv(client_discr, minMaxNet, 2 * sizeof(int), 0);
 
-        minMax = (float *)malloc(2 * sizeof(float));
+        minMax = (int *)malloc(2 * sizeof(int));
         minMax[0] = ntohl(minMaxNet[0]);
         minMax[1] = ntohl(minMaxNet[1]);
 
-        fprintf(stdout, "Min: %f, Max: %f", minMax[0], minMax[1]);
+        fprintf(stdout, "Min: %d, Max: %d", minMax[0], minMax[1]);
 
         free(minMax);
         free(minMaxNet);
