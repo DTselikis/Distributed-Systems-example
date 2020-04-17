@@ -40,19 +40,17 @@ int main (int argc, char *argv[]) {
 }
 
 void client(int argc, char **argv) {
-  int client_discr; // Client's socket
-  char *buffer;
+  int server_discr; // Client's socket
+
+  // Socket variables
   unsigned int choiceNet;
   unsigned int choice;
-
   int *numArrayNet;
   int *numArray;
   unsigned int numOfElementsNet;
   unsigned int numOfElements;
   char *floatNumStr;
   float floatNum;
-
-
   char *averageStr;
   float average;
   unsigned int length;
@@ -60,12 +58,13 @@ void client(int argc, char **argv) {
   int *minMax;
   char *muledArrayStr;
   float *muledArray;
-  unsigned int i;
 
+  // Helping variables
+  unsigned int i;
   unsigned short flag = 0;
   unsigned short floatFlag = 0;
 
-  client_discr = clientInitialize(argv[1], atoi(argv[2]));
+  server_discr = clientInitialize(argv[1], atoi(argv[2]));
 
   fprintf(stdout, COLOR_GREEN "Connection with server established!\n" COLOR_RESET);
 
@@ -84,21 +83,26 @@ void client(int argc, char **argv) {
     fprintf(stdout, COLOR_YELLOW "Sending message to server...\n" COLOR_RESET);
 
     choiceNet = htonl(choice);
-    send(client_discr, &choiceNet, sizeof(unsigned int), 0);
+    send(server_discr, &choiceNet, sizeof(unsigned int), 0);
 
+    // Send data to socket server
     switch(choice) {
       case 3: {
+        // Floating point numbers are send as char* array
+        // to ensure compatibility
         floatNumStr = (char *)malloc(100 * sizeof(char));
         sprintf(floatNumStr, "%f", floatNum);
         length = strlen(floatNumStr) + 1;
 
-        send(client_discr, &length, sizeof(unsigned int), 0);
-        send(client_discr, floatNumStr, length, 0);
+        send(server_discr, &length, sizeof(unsigned int), 0);
+        send(server_discr, floatNumStr, length, 0);
 
         free(floatNumStr);
       }
       case 2:
       case 1: {
+        // integers are converted to network byte order
+        // to ensure compatibility
         int res;
         numOfElementsNet = htonl(numOfElements);
         numArrayNet = (int *)malloc(numOfElements * sizeof(int));
@@ -106,18 +110,19 @@ void client(int argc, char **argv) {
           numArrayNet[i] = htonl(numArray[i]);
         }
 
-        send(client_discr, &numOfElementsNet, sizeof(unsigned int), 0);
-        res = send(client_discr, numArrayNet, numOfElements * sizeof(int), 0);
+        send(server_discr, &numOfElementsNet, sizeof(unsigned int), 0);
+        res = send(server_discr, numArrayNet, numOfElements * sizeof(int), 0);
 
         free(numArrayNet);
       }
     }
 
+    // Receive data from socket server
     switch(choice) {
       case 1: {
-        recv(client_discr, &length, sizeof(unsigned int), 0);
+        recv(server_discr, &length, sizeof(unsigned int), 0);
         averageStr = (char *)malloc(length * sizeof(char));
-        recv(client_discr, averageStr, length, 0);
+        recv(server_discr, averageStr, length, 0);
         average = atof(averageStr);
 
         fprintf(stdout, "Average: %5.2f\n", average);
@@ -126,7 +131,7 @@ void client(int argc, char **argv) {
       }
       case 2: {
         minMaxNet = (int *)malloc(2 * sizeof(int));
-        recv(client_discr, minMaxNet, 2 * sizeof(int), 0);
+        recv(server_discr, minMaxNet, 2 * sizeof(int), 0);
 
         minMax = (int *)malloc(2 * sizeof(int));
         minMax[0] = ntohl(minMaxNet[0]);
@@ -140,10 +145,10 @@ void client(int argc, char **argv) {
         break;
       }
       case 3: {
-        recv(client_discr, &length, sizeof(unsigned int), 0);
+        recv(server_discr, &length, sizeof(unsigned int), 0);
         muledArrayStr = (char *)malloc(length * sizeof(char));
 
-        recv(client_discr, muledArrayStr, length, 0);
+        recv(server_discr, muledArrayStr, length, 0);
 
         muledArray = strToFloatArray(muledArrayStr, numOfElements);
 
@@ -158,18 +163,12 @@ void client(int argc, char **argv) {
 
     fprintf(stdout, COLOR_YELLOW "Response from server received\n" COLOR_RESET);
 
-    // Adding string termination character because is missing
-    // (strlen from server-side doesn't count the '\0' so the messages
-    // that arrive don't include it
-    //buffer[recievedMsgSize] = '\0';
-
     numArray = menu(&choice, &numOfElements, &floatNum, numArray, &flag, &floatFlag);
   }
 
-  fprintf(stdout, COLOR_YELLOW "Sending close to server...\n" COLOR_RESET);
-  // Covers the case that user enter '\n' from the beginning.
-  send(client_discr, &choice, sizeof(unsigned int), 0);
-  close(client_discr); // Closes the client's socket
+  fprintf(stdout, COLOR_YELLOW "Sending closing message to server...\n" COLOR_RESET);
+  send(server_discr, &choice, sizeof(unsigned int), 0);
+  close(server_discr); // Closes the server's socket
   fprintf(stdout, COLOR_GREEN "Connection to server closed successfully!\n" COLOR_RESET);
 
   free(numArray);
@@ -180,12 +179,12 @@ void client(int argc, char **argv) {
  * Returns the clients's socket up and running
 */
 int clientInitialize(char *host, unsigned int port) {
-  int client_discr;
+  int server_discr;
   struct sockaddr_in serverSockAddr;
   struct hostent *server;
 
   // Creates a socket. This will be the client's socket
-  if ((client_discr = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+  if ((server_discr = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
     perror("Error at creating socket");
     exit(1);
   }
@@ -203,12 +202,12 @@ int clientInitialize(char *host, unsigned int port) {
   serverSockAddr.sin_port = htons(port);
 
   // Makes the connection with server's socket
-  if (connect(client_discr, (struct sockaddr *)&serverSockAddr, sizeof(serverSockAddr)) == -1) {
+  if (connect(server_discr, (struct sockaddr *)&serverSockAddr, sizeof(serverSockAddr)) == -1) {
     perror("Error at connecting to the server");
     exit(2);
   }
 
-  return client_discr;
+  return server_discr;
 }
 
 int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, int *previousArray, unsigned short *flag, unsigned short *floatFlag) {
@@ -222,6 +221,10 @@ int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, in
   "0: Exit\nChoice: ");
   scanf("%d", choice);
 
+  // Ask to change input only in the case that:
+  // 1. no previous input was provided
+  // 2. option 3 is not the first option of the user so
+  // and so value for floatNum is needed
   if (*flag && *choice != 0) {
     if (*choice == 3 && *floatFlag == 0) {
       newInputFlag = 0;
@@ -261,6 +264,12 @@ int *menu(unsigned int *choice, unsigned int *numOfElements, float *floatNum, in
   return numArray;
 }
 
+/**
+  * Converts an int or float array to a char* array
+  * that contains the same numbers.
+  * This function seperates each number and converts it to char*.
+  * compileStrArray compile all parts to one char*
+*/
 char *numArrayToCharArray(void *voidArray, unsigned int numOfElements, char delimeter, unsigned int *length, unsigned short int mode) {
 	char **strArray = (char **)malloc(numOfElements * sizeof(char *));
 	unsigned int i;
@@ -301,6 +310,9 @@ char *numArrayToCharArray(void *voidArray, unsigned int numOfElements, char deli
 	return buffer;
 }
 
+/**
+  * Combine all char* numbers to a single char* array.
+*/
 char *compileStrArray(char **strArray, unsigned int length, unsigned int numOfElements, char delimeter) {
 	char *buffer = (char *)malloc(length * sizeof(char));
 	unsigned int i;
@@ -310,6 +322,7 @@ char *compileStrArray(char **strArray, unsigned int length, unsigned int numOfEl
 	for (i = 0; i < numOfElements; i++) {
 		strncpy(buffer + pos, strArray[i], strlen(strArray[i]));
 		pos += strlen(strArray[i]);
+    // If there is no other element, terminate the string
 		(i == numOfElements - 1) ? (buffer[pos] = '\0') : (buffer[pos] = delimeter);
 		pos++;
 	}
@@ -317,6 +330,10 @@ char *compileStrArray(char **strArray, unsigned int length, unsigned int numOfEl
 	return buffer;
 }
 
+/**
+  * Converts a char* that contains one or more numbers
+  * to a float array.
+*/
 float *strToFloatArray(char *floatBuffer, unsigned int numOfElements) {
 	float *floatArray = (float *)malloc(numOfElements * sizeof(float));
 	char *tmpStr = (char *)malloc(100 * sizeof(char));
@@ -334,8 +351,10 @@ float *strToFloatArray(char *floatBuffer, unsigned int numOfElements) {
 	return floatArray;
 }
 
-// Open file for reading operation
-// Returns a pointer to the opened file
+/**
+  * Open file for reading.
+  * Returns a pointer to the opened file
+*/
 FILE *initFile(char *fName) {
 	FILE *fPointer;
 
@@ -349,8 +368,9 @@ FILE *initFile(char *fName) {
 	return fPointer;
 }
 
-// File input
-// Returns number of elements read and an 1-D array of these elements
+/**
+  * Input from file
+*/
 int *readFromFile(unsigned int *numOfElements, float *floatNum, FILE *fPointer) {
 	unsigned int i;
   int *numArray;

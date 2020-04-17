@@ -6,6 +6,9 @@
 
 #include "RPC.h"
 
+/**
+	* Find the average of numbers
+*/
 float *
 findaverage_1_svc(intMatrix *argp, struct svc_req *rqstp)
 {
@@ -24,6 +27,9 @@ findaverage_1_svc(intMatrix *argp, struct svc_req *rqstp)
 	return &result;
 }
 
+/**
+	* Find the minimum and maximum number of the array
+*/
 intMatrix *
 findminmax_1_svc(intMatrix *argp, struct svc_req *rqstp)
 {
@@ -53,6 +59,9 @@ findminmax_1_svc(intMatrix *argp, struct svc_req *rqstp)
 	return &result;
 }
 
+/**
+	* Multiply floating point number with matrix
+*/
 floatMatrix *
 mulmatrixwithfloat_1_svc(mulFloat *argp, struct svc_req *rqstp)
 {

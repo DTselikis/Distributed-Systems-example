@@ -42,6 +42,10 @@ struct threadArgs {
 
 int main (int argc, char *argv[]) {
 
+  if (argc < 3) {
+    fprintf(stderr, "Usage: ./RPC_client host port\n");
+    exit(1);
+  }
   server(argc, argv);
 
   return 0;
@@ -104,15 +108,15 @@ void server(int argc, char *argv[]) {
 /**
  * Each call to this function represents a new thread that
  * serves independently one (and only one) client.
- * The function is responsible for the communication with the
- * client (receive and send messages) and also for updating
- * the two global variables "totalCalculations" and "totalPassedCalculations"
- * and signaling the logging thread.
+ * The function is the proxy between the socket client
+ * and RPC server. Is it also responsible for converting data to
+ * to compatible type for the communitcation with the two ends.
 */
 void *clientThread(void *arg) {
   // Typecasting the void argument to something we can handle
   struct threadArgs *passedArgs = (struct threadArgs *) arg;
 
+  // Variables for commuication with the socket client
   unsigned int numOfElementsNet;
   unsigned int numOfElements;
   char *multiplierStr;
@@ -121,13 +125,14 @@ void *clientThread(void *arg) {
   int *numArray;
   unsigned int choiceNet;
   unsigned int choice;
-
   char* averageStr;
   unsigned int length;
   float average;
   int *minMaxNet;
   char *muledMatrixStr;
   float *muledMatrix;
+
+  // Helping variables
   unsigned int i;
 	unsigned short RPCflag;
 
@@ -163,6 +168,9 @@ void *clientThread(void *arg) {
 	   // Receive data from client
   	switch(choice) {
   		case 3: {
+        // Floating point numbers are transfered as char* data.
+        // Client inform us about the length of the char* to
+        // allocate the right amount of memory
         recv(passedArgs->client_discr, &length, sizeof(unsigned int), 0);
         multiplierStr = (char *)malloc(length * sizeof(char));
   			recv(passedArgs->client_discr, multiplierStr, length, 0);
@@ -173,12 +181,12 @@ void *clientThread(void *arg) {
   		}
   		case 2:
   		case 1: {
-        int res;
+        // We convert integers to network byte order to ensure compatibility
   			recv(passedArgs->client_discr, &numOfElementsNet, sizeof(unsigned int), 0);
         numOfElements = ntohl(numOfElementsNet);
 
   			numArrayNet = (int *)malloc(numOfElements * sizeof(int));
-  			res = recv(passedArgs->client_discr, numArrayNet, numOfElements * sizeof(int), 0);
+  			recv(passedArgs->client_discr, numArrayNet, numOfElements * sizeof(int), 0);
 
   			numArray = (int *)malloc(numOfElements * sizeof(int));
 
@@ -190,6 +198,7 @@ void *clientThread(void *arg) {
   		}
   	}
 
+    // Communicate with RPC server
 		RPCflag = 0;
 		switch(choice) {
 			case 1: {
@@ -252,6 +261,7 @@ void *clientThread(void *arg) {
 			}
 		}
 
+    // Send data back to socket client
   	switch(choice) {
   		case 1: {
 				if (RPCflag) {
@@ -278,7 +288,7 @@ void *clientThread(void *arg) {
 	        send(passedArgs->client_discr, minMaxNet, 2 * sizeof(int), 0);
 
 	  			free(minMaxNet);
-					free(result_2); // BUG may cause bug
+					free(result_2->numArray.numArray_val); // BUG may cause bug
 				}
 
         break;
@@ -286,6 +296,9 @@ void *clientThread(void *arg) {
   		case 3: {
         muledMatrixStr = numArrayToCharArray(result_3->muledArray.muledArray_val, result_3->muledArray.muledArray_len, ' ', &length, 0);
 
+        for (i = 0; i < result_3->muledArray.muledArray_len; i++) {
+          printf("%f\n", result_3->muledArray.muledArray_val[i]);
+        }
   			fprintf(stdout, COLOR_YELLOW "Sending message to client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
         send(passedArgs->client_discr, &length, sizeof(unsigned int), 0);
         send(passedArgs->client_discr, muledMatrixStr, length, 0);
@@ -298,11 +311,15 @@ void *clientThread(void *arg) {
   	free(numArray);
 
     fprintf(stdout, COLOR_YELLOW "Waiting for message from client [%d]...\n" COLOR_RESET, passedArgs->client_discr);
+
     // Waiting for another message
     recv(passedArgs->client_discr, &choiceNet, sizeof(unsigned int), 0);
     choice = ntohl(choiceNet);
   }
 
+  // If client has requested the terminatio of the communtication,
+  // we close the connection between RPC server and socket client
+  // and destroy the thread.
 	#ifndef	DEBUG
 		fprintf(stdout, COLOR_GREEN "RPC connection for client [%d] closed successfully!\n" COLOR_RESET, passedArgs->client_discr);
 		clnt_destroy (clnt);
@@ -353,7 +370,10 @@ int serverInitialize(unsigned int port) {
   return server_discr;
 }
 
-
+/**
+  * Converts a char* that contains one or more numbers
+  * to an int array.
+*/
 int *strToIntArray(char *floatBuffer, unsigned int numOfElements) {
 	int *intArray = (int *)malloc(numOfElements * sizeof(int));
 	char *tmpStr = (char *)malloc(100 * sizeof(char));
@@ -371,6 +391,12 @@ int *strToIntArray(char *floatBuffer, unsigned int numOfElements) {
 	return intArray;
 }
 
+/**
+  * Converts an int or float array to a char* array
+  * that contains the same numbers.
+  * This function seperates each number and converts it to char*.
+  * compileStrArray compile all parts to one char*
+*/
 char *numArrayToCharArray(void *voidArray, unsigned int numOfElements, char delimeter, unsigned int *length, unsigned short int mode) {
 	char **strArray;
 	strArray = (char **)malloc(numOfElements * sizeof(char *));
@@ -409,6 +435,9 @@ char *numArrayToCharArray(void *voidArray, unsigned int numOfElements, char deli
 	return buffer;
 }
 
+/**
+  * Combine all char* numbers to a single char* array.
+*/
 char *compileStrArray(char **strArray, unsigned int length, unsigned int numOfElements, char delimeter) {
 	char *buffer = (char *)malloc(length * sizeof(char));
 	unsigned int i;
@@ -418,6 +447,7 @@ char *compileStrArray(char **strArray, unsigned int length, unsigned int numOfEl
 	for (i = 0; i < numOfElements; i++) {
 		strncpy(buffer + pos, strArray[i], strlen(strArray[i]));
 		pos += strlen(strArray[i]);
+    // If there is no other element, terminate the string
 		(i == numOfElements - 1) ? (buffer[pos] = '\0') : (buffer[pos] = delimeter);
 		pos++;
 	}
